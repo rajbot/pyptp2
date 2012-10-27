@@ -37,10 +37,7 @@ References and Thanks:
 
 
 Zachary Berkowitz
-National Oceanic and Atmospheric Administration
-Alaska Fisheries Science Center
-Midwater Assesment and Conservation Engineering Group
-zachary.berkowitz@noaa.gov
+zac.berkowitz@gmail.com
 '''
 
 from camera import *
