@@ -2,6 +2,7 @@ import logging
 import usb
 import struct
 import time
+from os import path
 
 import util
 from typedefs import *
@@ -9,7 +10,7 @@ from chdk_ptp_values import *
 
 __all__ = ['PTPCamera', 'CHDKCamera']
 
-class PTPCamera(object):
+class _CameraBase(object):
 
     def __init__(self, usb_device=None):
 
@@ -161,9 +162,26 @@ class PTPCamera(object):
 
         return recvd_response, recvd_data
 
-
-class CHDKCamera(PTPCamera):
+class PTPCamera(_CameraBase):
     '''
+    '''
+
+    def __init__(self, usb_dev=None):
+        _CameraBase.__init__(self, usb_dev)
+
+
+class CHDKCamera(_CameraBase):
+    '''
+    For use with Canon cameras using the CHDK firmware.
+
+    Available functions (see docstrings for info):
+        get_chdk_version
+        upload_file
+        download_file
+        get_live_view_data
+        execute_lua
+        read_script_message
+        write_script_message
 
     '''
 
@@ -172,7 +190,13 @@ class CHDKCamera(PTPCamera):
 
 
     def get_chdk_version(self):
+        '''
+        Retrieves the PTP-core (MAJOR,MINOR) version tuple from the
+        camera.
 
+        Note:  This is different than the (MAJOR,MINOR) version tuple
+        for the live_view PTP extensions. 
+        '''
         recvd_response, _ = self.ptp_transaction(command=PTP_OC_CHDK,
             params=[CHDKOperations.Version],
             tx_data=None, receiving=False, timeout=0)
@@ -181,7 +205,11 @@ class CHDKCamera(PTPCamera):
         return major, minor
 
     def check_script_status(self):
+        '''
+        :returns: CHDKScriptStatus
 
+        Check status of running scripts on camera
+        '''
         recvd_response, _ = self.ptp_transaction(command=PTP_OC_CHDK,
             params=[CHDKOperations.ScriptStatus],
             tx_data=None, receiving=False, timeout=0)
@@ -190,7 +218,20 @@ class CHDKCamera(PTPCamera):
         return status
 
     def execute_lua(self, script, block=False):
+        '''
+        :param script: LUA script to execute on camera
+        :type script: str
 
+        :param block:  Wait for script to return before continuing
+        :type block: bool
+
+        :returns: (script_id, script_error, [msgs])
+
+        Execute a script on the camera.
+
+        Values returned by the LUA script are passed in individual
+        messages.
+        '''
         #NULL terminate script if necessary
         if not script.endswith('\0'):
             script += '\0'
@@ -208,7 +249,9 @@ class CHDKCamera(PTPCamera):
             return script_id, script_error, msgs
 
     def read_script_message(self):
-        
+        '''
+        Checks camera for messages created by running scripts.
+        '''
         recvd_response, recvd_data = self.ptp_transaction(command=PTP_OC_CHDK,
             params=[CHDKOperations.ReadScriptMsg, CHDKScriptLanguage.LUA],
             tx_data=None, receiving=True, timeout=0)
@@ -216,7 +259,15 @@ class CHDKCamera(PTPCamera):
         return recvd_response, recvd_data
 
     def write_script_message(self, message, script_id=0):
-        
+        '''
+        :param message: Message to send
+        :type message: str
+
+        :param script_id:  ID of script to deliver message to.
+        :type script_id: int
+
+        Passes a message to a running script.
+        '''
         recvd_response, _ = self.ptp_transaction(command=PTP_OC_CHDK,
             params=[CHDKOperations.WriteScriptMsg, script_id],
             tx_data=message, receiving=False, timeout=0)
@@ -224,8 +275,106 @@ class CHDKCamera(PTPCamera):
         msg_status = recvd_response.params[0]
         return msg_status
 
-    def get_live_view_data(self, liveview=True, overlay=False, palette=False):
+    @classmethod 
+    def __pack_file_for_upload(cls, local_filename, remote_filename=None):
+        '''
+        Private method to create a buffer holding
+        filename's contents for uploading to the camera.
+        called in `CHDKCamera.upload_file'
+        '''
+        if remote_filename is None:
+            remote_filename = path.basename(remote_filename)
 
+        if not remote_filename.endswith('\0'):
+            remote_filename += '\0'
+
+        filename_len = len(remote_filename)
+        fmt = '<I%dc' %(filename_len)
+        filebuf = struct.pack(fmt, filename_len, remote_filename)
+        with open(local_filename, 'rb') as fid:
+            contents = fid.read(-1)
+
+        fmt = '<%dB' % (len(contents))
+        filebuf += struct.pack(fmt, *contents)
+
+        return filebuf
+
+    def upload_file(self, local_filename, remote_filename=None, timeout=0):
+        '''
+        :param local_filename:  Name of file on computer
+        :type local_filename: str
+
+
+        :param remote_filename: Name of file on camera
+        :type remote_filename: str
+
+        Upload a file to the camera.  If remote_filename is None, the
+        file is uploaded to the root folder on the SD card.
+        '''
+        filestr = self.__pack_file_for_upload(local_filename, remote_filename)
+        dlfile_response, dlfile_data = self.ptp_transaction(command=PTP_OC_CHDK,
+            params=[CHDKOperations.UploadFile],
+            tx_data=filestr, receiving=False, timeout=timeout)
+
+        if ret_code != CHDKResponses.OK:
+            raise PTPError(tempdata_response.params[0], CHDKResponses.message[ret_code])
+
+
+    def download_file(self, filename, timeout=0):
+        '''
+        :param filename: Full path of file to download
+        :type filename:  str
+
+        Download a file from the camera
+        '''
+        #CHDK Download process:
+        #  - Store desried filename on camera w/ TempData
+        #  - Send DownloadFile command
+
+        if not filename.endswith('\0'):
+            filename += '\0'
+
+        tempdata_response, _ = self.ptp_transaction(command=PTP_OC_CHDK,
+            params=[CHDKOperations.TempData, 0],
+            tx_data=filename, receiving=False, timeout=timeout)
+
+        ret_code = tempdata_response.params[0]
+        #check response for problems
+        if ret_code != CHDKResponses.OK:
+            raise PTPError(tempdata_response.params[0], CHDKResponses.message[ret_code])
+
+        dlfile_response, dlfile_data = self.ptp_transaction(command=PTP_OC_CHDK,
+            params=[CHDKOperations.DownloadFile],
+            tx_data=None, receiving=True, timeout=timeout)
+
+        ret_code = tempdata_response.params[0]
+        #check response for problems
+        if ret_code != CHDKResponses.OK:
+            raise PTPError(tempdata_response.params[0], CHDKResponses.message[ret_code])
+
+        #Clear tempdata field
+        clear_response, _ = self.ptp_transaction(command=PTP_OC_CHDK,
+            params=[CHDKOperations.TempData, CHDKTempData.CLEAR],
+            tx_data=None, receiving=False, timeout=timeout)        
+        
+        #Return the raw string buffer
+        return dlfile_data.data
+
+    def get_live_view_data(self, liveview=True, overlay=False, palette=False):
+        '''
+        :param liveview:  Return the liveview image
+        :type liveview: bool
+
+        :param overlay:  Return the overlay image
+        :type overlay: bool
+
+        :param palette:  Return the overlay palette
+        :type palette: bool
+
+        :returns: :class:`typdefs.CHDK_LV_Data`
+        
+        Grabs a live view image from the camera.
+        '''
         flags = 0
         
         if liveview:

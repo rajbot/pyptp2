@@ -9,7 +9,7 @@ in CHDK source.
 
 __all__ = ['PTP_OC_CHDK', 'CHDKOperations', 'CHDKTypes', 'CHDKTempData', 'CHDKScriptLanguage',
     'CHDKScriptStaus', 'CHDKScriptError', 'CHDKMessageStatus', 'CHDKLVTransfer', 
-    'CHDKLVAspectRatio']
+    'CHDKLVAspectRatio', 'CHDKResponses']
 
 PTP_OC_CHDK                         = 0x9999
 
@@ -48,7 +48,7 @@ class CHDKScriptLanguage(object):
     UBASIC                          = 1
 
 
-class CHDKScriptStaus(object):
+class CHDKScriptStatus(object):
     NONE                            = 0     #no script running
     RUN                             = 0x1   #script running
     MSG                             = 0x2   #messages waiting
@@ -72,4 +72,15 @@ class CHDKLVTransfer(object):
 class CHDKLVAspectRatio(object):
     ASPECT_4_3                      = 0
     ASPECT_16_9                     = 1
+
+class CHDKResponses(object):
+    OK                              = 0x2001
+    GeneralError                    = 0x2002
+    ParameterNotSupported           = 0x2006
+    InvalidParameter                = 0x201D
+
+    message = { OK:  'OK',
+                GeneralError:  "General Error",
+                ParameterNotSupported:  "Parameter Not Supported",
+                InvalidParameter:  "Invalid Parameter"}
 

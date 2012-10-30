@@ -42,3 +42,14 @@ zac.berkowitz@gmail.com
 
 from camera import *
 import util
+
+class PTPError(Exception):
+
+	def __init__(self, err_code, err_msg=''):
+		self.value = err_code
+		self.msg   = err_msg
+
+	def __str__(self):
+		return "PTPError(%04x: %s)" % (self.value, self.msg)
+
+
