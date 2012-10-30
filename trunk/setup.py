@@ -3,7 +3,7 @@ Created on October 26, 2012
 
 @author: zachary.berkowitz
 '''
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='pyptp2',

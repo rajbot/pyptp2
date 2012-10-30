@@ -8,7 +8,7 @@ in CHDK source.
 '''
 
 __all__ = ['PTP_OC_CHDK', 'CHDKOperations', 'CHDKTypes', 'CHDKTempData', 'CHDKScriptLanguage',
-    'CHDKScriptStaus', 'CHDKScriptError', 'CHDKMessageStatus', 'CHDKLVTransfer', 
+    'CHDKScriptStatus', 'CHDKScriptError', 'CHDKMessageStatus', 'CHDKLVTransfer', 
     'CHDKLVAspectRatio', 'CHDKResponses']
 
 PTP_OC_CHDK                         = 0x9999

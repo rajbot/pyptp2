@@ -7,6 +7,7 @@ from os import path
 import util
 from typedefs import *
 from chdk_ptp_values import *
+from ptp_values import StandardResponses
 
 __all__ = ['PTPCamera', 'CHDKCamera']
 
@@ -167,7 +168,8 @@ class PTPCamera(_CameraBase):
     '''
 
     def __init__(self, usb_dev=None):
-        _CameraBase.__init__(self, usb_dev)
+        # _CameraBase.__init__(self, usb_dev)
+        raise NotImplimentedError('Work in progress')
 
 
 class CHDKCamera(_CameraBase):
@@ -186,7 +188,7 @@ class CHDKCamera(_CameraBase):
     '''
 
     def __init__(self, usb_device=None):
-        PTPCamera.__init__(self, usb_device)
+        _CameraBase.__init__(self, usb_device)
 
 
     def get_chdk_version(self):
@@ -398,7 +400,7 @@ class CHDKCamera(_CameraBase):
 
         return recvd_response, lv_data
 
-    def _wait_for_script_return(self):
+    def _wait_for_script_return(self, timeout=0):
         '''
         Polls the camera every 50ms.
 
@@ -407,27 +409,29 @@ class CHDKCamera(_CameraBase):
 
         Returns read messages when no scripts are running.
         '''
-        DONE = False
         msg_count = 1
         msgs = []
+        t_start = time.time()
 
-        while not DONE:
+        while True:
             STATUS = self.check_script_status()
 
-            if STATUS & CHDKScriptStaus.RUN:
+            if STATUS & CHDKScriptStatus.RUN:
                 # log.debug('Script running, sleeping 50ms')
                 time.sleep(50e-3)
+                if timeout > 0 and timeout > (time.time() - t_start):
+                    raise PTPError(StandardResponses.TRANSACTION_CANCELLED, "Timeout waiting for script to return")
             
-            elif STATUS & CHDKScriptStaus.MSG:
+            elif STATUS & CHDKScriptStatus.MSG:
                 msg, msg_buf = self.read_script_message()
                 msg_count += 1
 
                 msgs.append((msg, msg_buf))
             
-            elif STATUS == CHDKScriptStaus.NONE:
-                DONE = True
+            elif STATUS == CHDKScriptStatus.NONE:
+                break
             
             else:
-                DONE = True
+                raise PTPError(StandardResponses.UNDEFINED, "Invalid response for script status: 0x%X" %(STATUS))
 
         return msgs

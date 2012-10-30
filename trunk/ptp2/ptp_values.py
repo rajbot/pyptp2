@@ -1,3 +1,5 @@
+__all__ = ['StandardResponses']
+
 class StandardResponses:
 
     UNDEFINED                               = 0x2000
