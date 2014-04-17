@@ -16,20 +16,108 @@ PTP_USB_RESPONSE        = 3
 PTP_USB_EVENT           = 4
 
 
-__all__ = ['PTP_CONTAINER_TYPE','ParamContainer', 'DataContainer', 'CHDK_LV_Data', 
-    'CHDK_FrameBuffer', 'CHDK_DataHeader']
+__all__ = ['PTP_CONTAINER_TYPE', 'PTP_OPCODE', 'PTP_RESPONSE_CODE', 'ParamContainer',
+    'DataContainer', 'CHDK_LV_Data', 'CHDK_FrameBuffer', 'CHDK_DataHeader']
 
 class PTP_CONTAINER_TYPE(object):
     COMMAND         = 1
     DATA            = 2
     RESPONSE        = 3
-    EVENT           = 4  
+    EVENT           = 4
+
+
+class PTP_OPCODE(object):
+    '''From gPhoto ptp.h'''
+    #PTP v1.0 operation codes
+    UNDEFINED                   = 0x1000
+    GET_DEVICE_INFO             = 0x1001
+    OPEN_SESSION                = 0x1002
+    CLOSE_SESSION               = 0x1003
+    GET_STORAGE_IDS             = 0x1004
+    GET_STORAGE_INFO            = 0x1005
+    GET_NUM_OBJECTS             = 0x1006
+    GET_OBJECT_HANDLES          = 0x1007
+    GET_OBJECT_INFO             = 0x1008
+    GET_OBJECT                  = 0x1009
+    GET_THUMB                   = 0x100A
+    DELETE_OBJECT               = 0x100B
+    SEND_OBJECT_INFO            = 0x100C
+    SEND_OBJECT                 = 0x100D
+    INITIATE_CAPTURE            = 0x100E
+    FORMAT_STORE                = 0x100F
+    RESET_DEVICE                = 0x1010
+    SELF_TEST                   = 0x1011
+    SET_OBJECT_PROTECTION       = 0x1012
+    POWER_DOWN                  = 0x1013
+    GET_DEVICE_PROP_DESC        = 0x1014
+    GET_DEVICE_PROP_VALUE       = 0x1015
+    SET_DEVICE_PROP_VALUE       = 0x1016
+    RESET_DEVICE_PROP_VALUE     = 0x1017
+    TERMINATE_OPEN_CAPTURE      = 0x1018
+    MOVE_OBJECT                 = 0x1019
+    COPY_OBJECT                 = 0x101A
+    GET_PARTIAL_OBJECT          = 0x101B
+    INITIATE_OPEN_CAPTURE       = 0x101C
+
+    #PTP v1.1 operation codes
+    START_ENUM_HANDLES          = 0x101D
+    ENUM_HANDLES                = 0x101E
+    STOP_ENUM_HANDLES           = 0x101F
+    GET_VENDOR_EXTENSION_MAPS   = 0x1020
+    GET_VENDOR_DEVICE_INFO      = 0x1021
+    GET_RESIZED_IMAGE_OBJECT    = 0x1022
+    GET_FILESYSTEM_MANIFEST     = 0x1023
+    GET_STREAM_INFO             = 0x1024
+    GET_STREAM                  = 0x1025
+
+
+class PTP_RESPONSE_CODE(object):
+    '''From gPhoto ptp.h'''
+    # PTP v1.0 response codes
+    UNDEFINED                      = 0x2000
+    OK                             = 0x2001
+    GENERAL_ERROR                  = 0x2002
+    SESSION_NOT_OPEN               = 0x2003
+    INVALID_TRANSACTION_ID         = 0x2004
+    OPERATION_NOT_SUPPORTED        = 0x2005
+    PARAMETER_NOT_SUPPORTED        = 0x2006
+    INCOMPLETE_TRANSFER            = 0x2007
+    INVALID_STORAGE_ID             = 0x2008
+    INVALID_OBJECT_HANDLE          = 0x2009
+    DEVICE_PROP_NOT_SUPPORTED      = 0x200A
+    INVALID_OBJECT_FORMAT_CODE     = 0x200B
+    STORE_FULL                     = 0x200C
+    OBJECT_WRITE_PROTECTED         = 0x200D
+    STORE_READ_ONLY                = 0x200E
+    ACCESS_DENIED                  = 0x200F
+    NO_THUMBNAIL_PRESENT           = 0x2010
+    SELF_TEST_FAILED               = 0x2011
+    PARTIAL_DELETION               = 0x2012
+    STORE_NOT_AVAILABLE            = 0x2013
+    SPECIFICATION_BY_FORMAT_UNSUPPORTED = 0x2014
+    NO_VALID_OBJECT_INFO           = 0x2015
+    INVALID_CODE_FORMAT            = 0x2016
+    UNKNOWN_VENDOR_CODE            = 0x2017
+    CAPTURE_ALREADY_TERMINATED     = 0x2018
+    DEVICE_BUSY                    = 0x2019
+    INVALID_PARENT_OBJECT          = 0x201A
+    INVALID_DEVICE_PROP_FORMAT     = 0x201B
+    INVALID_DEVICE_PROP_VALUE      = 0x201C
+    INVALID_PARAMETER              = 0x201D
+    SESSION_ALREADY_OPENED         = 0x201E
+    TRANSACTION_CANCELED           = 0x201F
+    SPECIFICATION_OF_DESTINATION_UNSUPPORTED = 0x2020
+
+    # PTP V1.1 RESPONSE CODES
+    INVALID_ENUM_HANDLE            = 0x2021
+    NO_STREAM_ENABLED              = 0x2022
+    INVALID_DATA_SET               = 0x2023
 
 
 class _PyStructure(object):
 
     def __init__(self, fields, endian='<', bytestr=None):
-        
+
         if endian in '@=<>!':
             self._fmt = endian
         else:
@@ -41,7 +129,7 @@ class _PyStructure(object):
             #numeric
             if type_[-1] in 'bBhHiIlLqQfd':
                 setattr(self, name, 0)
-                
+
             #character types
             elif type_[-1] in 'cs':
                 setattr(self, name, '')
@@ -84,7 +172,7 @@ class _PyStructure(object):
     def fmt(self):
         return self._fmt
 
-    @property 
+    @property
     def fields(self):
         return self._fields
 
@@ -148,7 +236,7 @@ class CHDK_LV_Data(object):
         ub = self.header.size
 
         self.header.unpack(bytestr[lb:ub])
-        
+
         lb = self.header.vp_desc_start
         self.vp_desc = CHDK_FrameBuffer()
         ub = lb + self.vp_desc.size
@@ -185,7 +273,7 @@ class CHDK_LV_Data(object):
         lb = 0
         ub = self.header.size
         bytestr[lb:ub] = self.header.pack()
-        
+
         lb=self.header.vp_desc_start
         ub=lb + self.vp_desc.size
         bytestr[lb:ub] = self.vp_desc.pack()
@@ -209,7 +297,7 @@ class CHDK_LV_Data(object):
             bytestr[lb:ub] = struct.pack(fmt, *self.bm_data)
 
         return bytestr
-        
+
 
 
 class ParamContainer(_PyStructure):
@@ -217,7 +305,7 @@ class ParamContainer(_PyStructure):
 
     def __init__(self, bytestr=None):
 
-        header = [  
+        header = [
                     ('length',            'I'),
                     ('type',              'H'),
                     ('code',              'H'),
@@ -230,7 +318,7 @@ class ParamContainer(_PyStructure):
 
         if bytestr is not None:
             self.unpack(bytestr)
-      
+
         # else:
         #     for name, value in kwargs.iteritems():
         #         if name == 'params' and isinstance(value, list):
@@ -247,7 +335,7 @@ class ParamContainer(_PyStructure):
         num_params = (self.length - 12) / 4
         str_len = len(bytestr)
         exp_len = 12 + num_params * 4
-        
+
         if str_len != exp_len:
             raise(IndexError('Expected string of size %d, got %d' %(exp_len, str_len)))
 
@@ -277,7 +365,7 @@ class DataContainer(_PyStructure):
 
     def __init__(self, bytestr=None):
 
-        header = [  
+        header = [
                     ('length',            'I'),
                     ('type',              'H'),
                     ('code',              'H'),
@@ -293,7 +381,7 @@ class DataContainer(_PyStructure):
             self.unpack(bytestr)
 
     def unpack(self, bytestr):
-        
+
         _PyStructure.unpack(self, bytestr[:12])
 
         self._data = bytestr[12:]
