@@ -163,13 +163,52 @@ class _CameraBase(object):
 
         return recvd_response, recvd_data
 
+
 class PTPCamera(_CameraBase):
     '''
+    If the PTPCamera class is not initialized with a usb_device handle, the first
+    PTP device found will be used.
     '''
 
-    def __init__(self, usb_dev=None):
-        # _CameraBase.__init__(self, usb_dev)
-        raise NotImplimentedError('Work in progress')
+    def __init__(self, usb_device=None):
+        self.logger = logging.getLogger('ptpcamera')
+        self.logger.setLevel(logging.DEBUG)
+
+        if usb_device is None:
+            cams = util.list_ptp_cameras()
+            if not cams:
+                raise IOError('No PTP Devices Found')
+            usb_device = cams[0]
+            self.logger.debug('Init with PTP device ' + usb_device.product)
+
+        self.session_id = 0x1
+        _CameraBase.__init__(self, usb_device)
+
+
+    def open_session(self):
+        response, data = self.ptp_transaction(PTP_OPCODE.OPEN_SESSION, params=[self.session_id])
+        if (response.code != PTP_RESPONSE_CODE.OK) and (response.code != PTP_RESPONSE_CODE.SESSION_ALREADY_OPENED):
+            raise ValueError('Could not open PTP session (got 0x{:x})'.format(response.code))
+            return False
+        return True
+
+
+    def close_session(self):
+        response, data = self.ptp_transaction(PTP_OPCODE.CLOSE_SESSION)
+        return self.check_response(response)
+
+
+    def initiate_capture(self):
+        response, data = self.ptp_transaction(PTP_OPCODE.INITIATE_CAPTURE, params=[0x0, 0x0])
+        self.check_response(response)
+        return response, data
+
+
+    def check_response(self, response):
+        if response.code != PTP_RESPONSE_CODE.OK:
+            raise ValueError('PTP response code was not OK (got 0x{:x})'.format(response.code))
+            return False
+        return True
 
 
 class CHDKCamera(_CameraBase):
