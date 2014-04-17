@@ -79,10 +79,10 @@ class _CameraBase(object):
 
     def _bulk_write(self, bytestr, timeout=0):
 
-        return self._handle.write(self._ep_out, bytestr, interface=self._intf, timeout=timeout)
+        return self._handle.write(self._ep_out, bytestr, timeout=timeout)
 
     def _bulk_read(self, size, timeout=0):
-        return self._handle.read(self._ep_in, size, interface=self._intf, timeout=timeout).tostring()
+        return self._handle.read(self._ep_in, size, timeout=timeout).tostring()
 
     def send_ptp_message(self, bytestr, timeout=0):
         return self._bulk_write(bytestr, timeout)
