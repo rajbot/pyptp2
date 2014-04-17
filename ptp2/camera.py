@@ -21,7 +21,7 @@ class _CameraBase(object):
 
         self._ep_in     = None
         self._ep_out    = None
-        self._ep_intr   = None       
+        self._ep_intr   = None
 
         self._transaction_id = 0
         if usb_device is not None:
@@ -31,7 +31,7 @@ class _CameraBase(object):
         self.close()
 
     def open(self, usb_device):
-        
+
         intf = util.get_ptp_interface(usb_device)
 
         if intf is None:
@@ -62,8 +62,8 @@ class _CameraBase(object):
 
         # _, self._handle = self._handle, None
         _, self._intf   = self._intf, None
-        
-        self._ep_in     = None  
+
+        self._ep_in     = None
         self._ep_out    = None
         self._ep_intr   = None
 
@@ -116,10 +116,10 @@ class _CameraBase(object):
 
         ptp_request = self.new_ptp_command(command, params)
         ptp_request_data = None
-        
+
         if tx_data is not None:
             assert isinstance(tx_data, str)
-            
+
             ptp_request_data = DataContainer()
             ptp_request_data.code = ptp_request.code
             ptp_request_data.transaction_id = ptp_request.transaction_id
@@ -129,7 +129,7 @@ class _CameraBase(object):
         #Send request
         bytes_xfrered = self.send_ptp_message(ptp_request.pack(), timeout)
 
-        #Send data 
+        #Send data
         if ptp_request_data is not None:
             bytes_xfered = self.send_ptp_message(ptp_request_data.pack(), timeout)
 
@@ -137,16 +137,16 @@ class _CameraBase(object):
             #read first 512 bytes to grab total data length
             buf = self.recv_ptp_message(timeout)
             _, type_ = struct.unpack('<IH', buf[:6])
-        
+
             if type_ == PTP_CONTAINER_TYPE.DATA:
                 recvd_data = DataContainer(buf)
-            
+
             elif type_ == PTP_CONTAINER_TYPE.RESPONSE:
                 recvd_response = ParamContainer(buf)
 
             elif type_ in [PTP_CONTAINER_TYPE.COMMAND, PTP_CONTAINER_TYPE.EVENT]:
                 recvd_data = ParamContainer(buf)
-            
+
             else:
                 raise TypeError('Unknown PTP USB container type: %d' %(type_))
 
@@ -154,10 +154,10 @@ class _CameraBase(object):
         if recvd_response is None:
             buf = self.recv_ptp_message(timeout=timeout)
             _, type_ = struct.unpack('<IH', buf[:6])
-            
+
             if type_ == PTP_CONTAINER_TYPE.RESPONSE:
                 recvd_response = ParamContainer(buf)
-            
+
             else:
                 raise TypeError('Expected response container, received type: %d' %(type_))
 
@@ -197,7 +197,7 @@ class CHDKCamera(_CameraBase):
         camera.
 
         Note:  This is different than the (MAJOR,MINOR) version tuple
-        for the live_view PTP extensions. 
+        for the live_view PTP extensions.
         '''
         recvd_response, _ = self.ptp_transaction(command=PTP_OC_CHDK,
             params=[CHDKOperations.Version],
@@ -245,7 +245,7 @@ class CHDKCamera(_CameraBase):
         script_id, script_error = recvd_response.params
         if not block:
             return script_id, script_error, []
-        
+
         else:
             msgs = self._wait_for_script_return()
             return script_id, script_error, msgs
@@ -277,7 +277,7 @@ class CHDKCamera(_CameraBase):
         msg_status = recvd_response.params[0]
         return msg_status
 
-    @classmethod 
+    @classmethod
     def __pack_file_for_upload(cls, local_filename, remote_filename=None):
         '''
         Private method to create a buffer holding
@@ -357,8 +357,8 @@ class CHDKCamera(_CameraBase):
         #Clear tempdata field
         clear_response, _ = self.ptp_transaction(command=PTP_OC_CHDK,
             params=[CHDKOperations.TempData, CHDKTempData.CLEAR],
-            tx_data=None, receiving=False, timeout=timeout)        
-        
+            tx_data=None, receiving=False, timeout=timeout)
+
         #Return the raw string buffer
         return dlfile_data.data
 
@@ -374,11 +374,11 @@ class CHDKCamera(_CameraBase):
         :type palette: bool
 
         :returns: :class:`typdefs.CHDK_LV_Data`
-        
+
         Grabs a live view image from the camera.
         '''
         flags = 0
-        
+
         if liveview:
             flags |= CHDKLVTransfer.VIEWPORT
 
@@ -421,16 +421,16 @@ class CHDKCamera(_CameraBase):
                 time.sleep(50e-3)
                 if timeout > 0 and timeout > (time.time() - t_start):
                     raise PTPError(StandardResponses.TRANSACTION_CANCELLED, "Timeout waiting for script to return")
-            
+
             elif STATUS & CHDKScriptStatus.MSG:
                 msg, msg_buf = self.read_script_message()
                 msg_count += 1
 
                 msgs.append((msg, msg_buf))
-            
+
             elif STATUS == CHDKScriptStatus.NONE:
                 break
-            
+
             else:
                 raise PTPError(StandardResponses.UNDEFINED, "Invalid response for script status: 0x%X" %(STATUS))
 
