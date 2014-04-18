@@ -225,8 +225,25 @@ class PTPCamera(_CameraBase):
         response, data = self.initiate_capture()
         self.check_response(response)
 
-        obj_added_event = self.check_event()
-        capture_complete_event = self.check_event()
+        #We should now receive an ObjectAdded event followed by a CaptureComplete event
+        #However, the Nikon J3 often (but not always) sends these two events out of order.
+        obj_added_event = None
+        capture_complete_event = None
+
+        event1 = self.check_event()
+        event2 = self.check_event()
+
+        for event in [event1, event2]:
+            if event.code == PTP_EVENT_CODE.OBJECT_ADDED:
+                obj_added_event = event
+            elif event.code == PTP_EVENT_CODE.CAPTURE_COMPLETE:
+                capture_complete_event = event
+
+        if obj_added_event is None:
+            raise IOError('ObjectAdded event was not received')
+
+        if capture_complete_event is None:
+            raise IOError('CaptureComplete event was not received')
 
         #self.close_session()
         return response

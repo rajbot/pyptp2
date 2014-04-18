@@ -16,8 +16,8 @@ PTP_USB_RESPONSE        = 3
 PTP_USB_EVENT           = 4
 
 
-__all__ = ['PTP_CONTAINER_TYPE', 'PTP_OPCODE', 'PTP_RESPONSE_CODE', 'ParamContainer',
-    'DataContainer', 'CHDK_LV_Data', 'CHDK_FrameBuffer', 'CHDK_DataHeader']
+__all__ = ['PTP_CONTAINER_TYPE', 'PTP_OPCODE', 'PTP_RESPONSE_CODE', 'PTP_EVENT_CODE',
+    'ParamContainer', 'DataContainer', 'CHDK_LV_Data', 'CHDK_FrameBuffer', 'CHDK_DataHeader']
 
 class PTP_CONTAINER_TYPE(object):
     COMMAND         = 1
@@ -112,6 +112,26 @@ class PTP_RESPONSE_CODE(object):
     INVALID_ENUM_HANDLE            = 0x2021
     NO_STREAM_ENABLED              = 0x2022
     INVALID_DATA_SET               = 0x2023
+
+
+class PTP_EVENT_CODE(object):
+    '''From gPhoto ptp.h'''
+    UNDEFINED                       = 0x4000
+    CANCEL_TRANSACTION              = 0x4001
+    OBJECT_ADDED                    = 0x4002
+    OBJECT_REMOVED                  = 0x4003
+    STORE_ADDED                     = 0x4004
+    STORE_REMOVED                   = 0x4005
+    DEVICE_PROP_CHANGED             = 0x4006
+    OBJECT_INFO_CHANGED             = 0x4007
+    DEVICE_INFO_CHANGED             = 0x4008
+    REQUEST_OBJECT_TRANSFER         = 0x4009
+    STORE_FULL                      = 0x400A
+    DEVICE_RESET                    = 0x400B
+    STORAGE_INFO_CHANGED            = 0x400C
+    CAPTURE_COMPLETE                = 0x400D
+    UNREPORTED_STATUS               = 0x400E
+
 
 
 class _PyStructure(object):
@@ -362,7 +382,7 @@ class ParamContainer(_PyStructure):
     def __repr__(self):
         return '<{m}.{n} at {i:x} length={l} type={t} code={c:x} txid={tx} params={p}>'.format(
             m=self.__class__.__module__, n=self.__class__.__name__, i=id(self), l=self.length,
-            t=self.type, c=self.code, txid=self.transaction_id,
+            t=self.type, c=self.code, tx=self.transaction_id,
             p=['0x'+struct.pack('>i', x).encode('hex') for x in self.params])
 
 
