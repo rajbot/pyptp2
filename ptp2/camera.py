@@ -88,8 +88,9 @@ class _CameraBase(object):
 
     def check_event(self, size=512, timeout=5000):
         buf = self._handle.read(self._ep_intr, size=size, timeout=timeout).tostring()
-        self.logger.debug('Received Event ' + buf.encode('hex'))
         p = ParamContainer(buf)
+        self.logger.debug('Received Event ' + buf.encode('hex'))
+        self.logger.debug(repr(p))
         if p.type != PTP_CONTAINER_TYPE.EVENT:
             raise ValueError('Received non-event container of type {t} on interrupt endpoint!'.format(t=p.type))
         return p
@@ -174,6 +175,8 @@ class _CameraBase(object):
             else:
                 raise TypeError('Expected response container, received type: %d' %(type_))
 
+        if recvd_response is not None:
+            self.logger.debug('Response: ' + repr(recvd_response))
         self.logger.debug('ptp_transaction end')
         return recvd_response, recvd_data
 

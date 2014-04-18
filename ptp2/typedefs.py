@@ -359,6 +359,13 @@ class ParamContainer(_PyStructure):
         self._params = param_list
 
 
+    def __repr__(self):
+        return '<{m}.{n} at {i:x} length={l} type={t} code={c:x} txid={tx} params={p}>'.format(
+            m=self.__class__.__module__, n=self.__class__.__name__, i=id(self), l=self.length,
+            t=self.type, c=self.code, txid=self.transaction_id,
+            p=['0x'+struct.pack('>i', x).encode('hex') for x in self.params])
+
+
 
 class DataContainer(_PyStructure):
 
