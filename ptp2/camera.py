@@ -13,15 +13,16 @@ __all__ = ['PTPCamera', 'CHDKCamera']
 
 class _CameraBase(object):
 
-    def __init__(self, usb_device=None):
-
-
+    def __init__(self, usb_device=None, log_level=logging.WARNING):
         self._intf      = None
         self._handle    = None
 
         self._ep_in     = None
         self._ep_out    = None
         self._ep_intr   = None
+
+        self.logger = logging.getLogger('_CameraBase')
+        self.logger.setLevel(log_level)
 
         self._transaction_id = 0
         if usb_device is not None:
@@ -84,11 +85,23 @@ class _CameraBase(object):
     def _bulk_read(self, size, timeout=0):
         return self._handle.read(self._ep_in, size, timeout=timeout).tostring()
 
+
+    def check_event(self, size=512, timeout=5000):
+        buf = self._handle.read(self._ep_intr, size=size, timeout=timeout).tostring()
+        self.logger.debug('Received Event ' + buf.encode('hex'))
+        p = ParamContainer(buf)
+        if p.type != PTP_CONTAINER_TYPE.EVENT:
+            raise ValueError('Received non-event container of type {t} on interrupt endpoint!'.format(t=p.type))
+        return p
+
+
     def send_ptp_message(self, bytestr, timeout=0):
+        self.logger.debug('Sending ' + bytestr.encode('hex'))
         return self._bulk_write(bytestr, timeout)
 
     def recv_ptp_message(self, timeout=0):
         buf = self._bulk_read(size=512, timeout=timeout)
+        self.logger.debug('Received ' + buf.encode('hex'))
         msg_len = struct.unpack('<I', buf[:4])[0]
         bytes_left = msg_len - 512
         if bytes_left > 0:
@@ -161,6 +174,7 @@ class _CameraBase(object):
             else:
                 raise TypeError('Expected response container, received type: %d' %(type_))
 
+        self.logger.debug('ptp_transaction end')
         return recvd_response, recvd_data
 
 
@@ -170,9 +184,9 @@ class PTPCamera(_CameraBase):
     PTP device found will be used.
     '''
 
-    def __init__(self, usb_device=None):
-        self.logger = logging.getLogger('ptpcamera')
-        self.logger.setLevel(logging.DEBUG)
+    def __init__(self, usb_device=None, log_level=logging.WARNING):
+        self.logger = logging.getLogger('PTPCamera')
+        self.logger.setLevel(log_level)
 
         if usb_device is None:
             cams = util.list_ptp_cameras()
@@ -182,14 +196,13 @@ class PTPCamera(_CameraBase):
             self.logger.debug('Init with PTP device ' + usb_device.product)
 
         self.session_id = 0x1
-        _CameraBase.__init__(self, usb_device)
+        _CameraBase.__init__(self, usb_device=usb_device, log_level=log_level)
 
 
     def open_session(self):
         response, data = self.ptp_transaction(PTP_OPCODE.OPEN_SESSION, params=[self.session_id])
         if (response.code != PTP_RESPONSE_CODE.OK) and (response.code != PTP_RESPONSE_CODE.SESSION_ALREADY_OPENED):
             raise ValueError('Could not open PTP session (got 0x{:x})'.format(response.code))
-            return False
         return True
 
 
@@ -204,11 +217,23 @@ class PTPCamera(_CameraBase):
         return response, data
 
 
+    def capture(self):
+        self.open_session()
+        response, data = self.initiate_capture()
+        self.check_response(response)
+
+        obj_added_event = self.check_event()
+        capture_complete_event = self.check_event()
+
+        #self.close_session()
+        return response
+
+
     def check_response(self, response):
         if response.code != PTP_RESPONSE_CODE.OK:
             raise ValueError('PTP response code was not OK (got 0x{:x})'.format(response.code))
-            return False
         return True
+
 
 
 class CHDKCamera(_CameraBase):
